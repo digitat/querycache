@@ -52,7 +52,7 @@
 */
 
 #define REQ_PACKET "\xff\xff\xff\xff\x54\x53\x6f\x75\x72\x63\x65\x20\x45\x6e\x67\x69\x6e\x65\x20\x51\x75\x65\x72\x79\x00"
-
+#define CONNECT_PACKET "\xff\xff\xff\xff\x71\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x00"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -106,7 +106,6 @@ GetUserFn g_GameServerSteamUser;
 GetHandleFn g_GameServerHandle;
 GetCSteamIDFn g_GameServerSteamID;
 
-ConVar *g_pCvarTags = NULL;
 
 /**
 * @file extension.cpp
@@ -135,7 +134,7 @@ int g_appID;
 int g_maxClients;
 int g_protoVersion;
 uint64 g_SteamId;
-
+int g_iNumPackets;
 bool QueryCache::SDK_OnLoad(char *error, size_t maxlength, bool late)
 {
 	#ifdef _WIN32
@@ -151,7 +150,9 @@ bool QueryCache::SDK_OnLoad(char *error, size_t maxlength, bool late)
 
 bool QueryCache::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bool late)
 {
+	// Get ICvar (code from Left4Downtown)
 	GET_V_IFACE_CURRENT(GetEngineFactory, g_pCVar, ICvar, CVAR_INTERFACE_VERSION);	
+	/*ConVar_Register(0, this);*/
 	
 	// TODO: Error handling?
 	return true;
@@ -163,7 +164,7 @@ void QueryCache::SDK_OnAllLoaded()
 	g_pServer = g_pSDKTools->GetIServer();	
 	BuildStaticReplyInfo();
 	g_protoVersion = DEFAULT_PROTO_VERSION;
-	g_maxClients = g_pServer->GetMaxClients();	
+g_maxClients = g_pServer->GetMaxClients();	
 	EnableReceiveHook();	
 	
 }
@@ -187,6 +188,29 @@ int RecvFromHook(int s, char *buf, int len, int flags, struct sockaddr *from, in
 	int ret = g_real_recvfrom_ptr(s, buf, len, flags, from, fromlen);
 	if(ret > 5)
 	{
+		/* Connect challenge */
+		if (strcmp(buf, CONNECT_PACKET) == 0)
+		{
+			if (time(NULL) - g_a2s_time <= 5)
+			{
+				if (g_iNumPackets <= 5)
+				{
+					g_iNumPackets++;
+					return ret;
+				}
+			} else {
+				g_iNumPackets = 0;
+				return ret;
+			}
+#ifdef _WIN32
+			flags = WSAETIMEDOUT;
+#elif defined _LINUX
+			flags = ETIMEDOUT;
+#endif
+			return SOCKET_ERROR;
+		}
+
+		/* A2S_INFO */
 		if(strcmp(buf, REQ_PACKET) == 0)
 		{			
 			if (time(NULL) - g_a2s_time > 5)
@@ -194,11 +218,11 @@ int RecvFromHook(int s, char *buf, int len, int flags, struct sockaddr *from, in
 				BuildReplyInfo();						
 			}
 			sendto(s, (const char *)g_replyPacket.GetData(), g_replyPacket.GetNumBytesWritten(), 0, from, *fromlen);
-			#ifdef _LINUX
-			flags = ETIMEDOUT;
-			#elif defined _WIN32
+#ifdef _WIN32
 			flags = WSAETIMEDOUT;
-			#endif
+#elif defined _LINUX
+			flags = ETIMEDOUT;
+#endif
 			return SOCKET_ERROR;
 		}
 		

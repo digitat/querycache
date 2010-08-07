@@ -61,7 +61,7 @@
 /* Basic information exposed publicly */
 #define SMEXT_CONF_NAME			"Server Query Cache"
 #define SMEXT_CONF_DESCRIPTION		"Responds to A2S_INFO queries"
-#define SMEXT_CONF_VERSION		"1.7.0.0"
+#define SMEXT_CONF_VERSION		"1.7.1.0"
 #define SMEXT_CONF_AUTHOR		"Recon + Afronanny"
 #define SMEXT_CONF_URL			"http://microbits.info/"
 #define SMEXT_CONF_LOGTAG		"QCACHE"
