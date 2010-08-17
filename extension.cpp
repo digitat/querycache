@@ -135,7 +135,7 @@ int g_appID;
 int g_maxClients;
 int g_protoVersion;
 uint64 g_SteamId;
-int g_iNumPackets;
+
 bool QueryCache::SDK_OnLoad(char *error, size_t maxlength, bool late)
 {
 	#ifdef _WIN32
